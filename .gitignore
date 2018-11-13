@@ -17,8 +17,8 @@ __pycache__/
 _*
 !__init__.py
 _test/
-.png
-.pdf
+*.png
+*.pdf
 
 
 # Distribution / packaging
