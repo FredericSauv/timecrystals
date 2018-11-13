@@ -3,41 +3,50 @@
 """
 Created on Wed Oct 10 17:51:59 2018
 
-@author: fred
+@author: FS
+
+Simple example of optimization with the non interacting wavepacket model
+Optimization over the width of the initial wavepacket (can be extended to a more
+complex optimization)
+
 """
 import sys
-sys.path.append('/home/fred/Desktop/GPyOpt/')
+# sys.path.append('/home/fred/Desktop/GPyOpt/')
 import GPyOpt
+sys.path.append('../')
+from model.wp_noint import model
 import numpy as np
-from BouncingAtom import model
 import scipy.optimize as sco
 
 #-----------------------------------------------------------------------------#
-# Prepare everything
+# Prepare Optimization
 #-----------------------------------------------------------------------------#
 # Parameters of the optimizer with some comments
-options_bo ={'initial_design_numdata': 20, 'acquisition_type':'EI', 
-                  'optim_num_samples':1000, 'optim_num_anchor':10,
-                  'acquisition_weight':2, 'acquisition_weight_lindec':False}
-max_iter = 100
+width_range = (0.5, 1.5)
+bounds = [{'name': 'width', 'type': 'continuous', 'domain': width_range}]
+options_bo ={'initial_design_numdata': 5, 'acquisition_type':'EI', 
+             'optim_num_samples':1000, 'optim_num_anchor':10,
+             'acquisition_weight':2, 'acquisition_weight_lindec':False,
+             'bounds': bounds}
+max_iter = 25
 
-# Initialize an bouncing atom model
-atom_model = model()
-h_ref, s, noise = 10.0, 40, 0.1
-omega_ref = atom_model.get_omega_perfect(h=h_ref, s=s)
+# Create the model
+s, x_init, L, N, dt, Lambda = 1, 20, 60, 2**9+20, 0.008, 0.04
+omega= (s*np.pi)/ (np.sqrt(2*x_init))
+T = np.sqrt(8 * x_init)
+t_final = 42 * T
+mod = model(grid_center = x_init, grid_width = L, grid_resol = N, 
+            Lambda = Lambda, omega = omega)
+    
+#Define the figure of Merit (1-fidelity) to turn it as a minimization problem
+def f(x):
+    print(x)
+    psi0 = mod.gauss_wp(x0 = x_init, delta=x)
+    psiT = mod.evol_to_t(t_final+dt, dt, psi0)
+    res = mod.fidelity(np.squeeze(psi0), np.squeeze(psiT))
+    print(res)
+    return 1 - res    
 
-# Define parameter(s) to optimize
-# Here we optimize the ratio omega / omega_ref
-limits = (0.8, 1.2)
-bounds = [{'name': 'omega_ratio', 'type': 'continuous', 'domain': limits}]
-
-# define functions FoM functions
-f = lambda x: atom_model.simulate_noisy_h0(omega = x * omega_ref, h_ref = h_ref, 
-             noise_h0 = 0, nb_repeat = 1, s = s, nb_period = 1, verbose = True)
-f_noisy = lambda x: atom_model.simulate_noisy_h0(omega = x * omega_ref, h_ref = h_ref, 
-            noise_h0 = 0.1, nb_repeat = 20, s = 40, nb_period = 1, verbose = True)
-f_testing = lambda x: atom_model.simulate_noisy_h0(omega = x * omega_ref, h_ref = h_ref, 
-            noise_h0 = 0.1, nb_repeat = 1000, s = 40, nb_period = 1, verbose = True)
 
 def _get_best_exp_from_BO(bo):
     """ From BO extract the best x"""
@@ -50,32 +59,5 @@ def _get_best_exp_from_BO(bo):
 myOpt = GPyOpt.methods.BayesianOptimization(f, bounds, **options_bo)
 myOpt.run_optimization(max_iter)
 x_no_noise, _ = _get_best_exp_from_BO(myOpt)
-
-## Another optimizer (differential evolution)
-resultOptim = sco.differential_evolution(f, [limits], popsize=5)
-print(resultOptim)
-x_no_noise_de = resultOptim['x']
-
-#-----------------------------------------------------------------------------#
-# Optimization of the noisy set-up
-#-----------------------------------------------------------------------------#
-myOpt = GPyOpt.methods.BayesianOptimization(f_noisy, bounds, **options_bo)
-myOpt.run_optimization(max_iter)
-x_noisy, _ = _get_best_exp_from_BO(myOpt)
- 
-#optim with DE (struggle to converge in the noisy set-up.. I limit it to 300 iterations)
-resultOptim = sco.differential_evolution(f_noisy, [(0.8, 1.2)], popsize=5, maxiter = 300)
-x_noisy_de = resultOptim['x']
-
-#-----------------------------------------------------------------------------#
-# Test the different optimal parameters found under the noisy set-up but with way 
-# more samples
-# Which one is the best
-#-----------------------------------------------------------------------------#
-res_no_noise_BO = f_testing(x_no_noise)
-res_no_noise_DE = f_testing(x_no_noise_de)
-res_noisy_BO = f_testing(x_noisy)
-res_noisy_DE = f_testing(x_noisy_de)
-
 
 
