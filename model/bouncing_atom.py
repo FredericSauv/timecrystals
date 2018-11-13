@@ -100,6 +100,8 @@ class model:
         res = [self.simulate_to_t(omega, T, h0)[0] - href for h0 in h0_list]
         plt.plot(h0_list, res)
         plt.scatter(href, 0)
+        plt.xlabel(r"$h_0$", size = 18)
+        plt.ylabel(r"$|h(T)-h_{ref}|/ h_{ref}$", size = 18)
         
     def evol_to_t(self, omega, t, h_0 = 10.0, p_0 = 0.0):
         """ return [X(t_0), ... X(t_n)] where X(t) = [x(t), p(t)]
