@@ -5,7 +5,6 @@ Created on Mon Nov 12 17:19:51 2018
 
 @author: fred
 """
-
 import sys
 sys.path.append('../')
 from model.wp_noint import model
@@ -17,7 +16,6 @@ rc('text', usetex=True)
 
 #--------------------------------------------------#
 # Test 1
-# Replicates Arek's Mathematica: scan initial height
 #--------------------------------------------------#
 # parameters of the simulation
 s = 1
@@ -36,7 +34,6 @@ mod = model(grid_center = x_init, grid_width = 60, grid_resol = N,
     
 #create state init
 psi0 = mod.gauss_wp(x0 = x_init, delta=0.702)
-
     
 #evolve it
 psiT = mod.evol_to_t(t_final+dt, dt, psi0)
