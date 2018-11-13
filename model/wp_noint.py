@@ -66,10 +66,9 @@ class model:
     def gen_grids(self):
         """ Generate several grids for the evolution of the wave packet. All 
         these does not change over the evolution.
-            grid_x: position grid (non shifted)
-            grid_k: momentum grid
+            grid_x: position grid (not shifted)
+            grid_k: momentum grid (has been rearranged to match the output of fft)
             grid_kin: kinetic energy grid
-            grid_kin_action: Action of the kinetic energy on the wave-function
         """
         self.dx = self.grid_width / self.grid_resol
         self.dk  = 2 * np.pi/self.grid_width
@@ -78,8 +77,7 @@ class model:
         self.grid_k = - (np.pi * self.grid_resol)/self.grid_width + self.dk * np.arange(0, self.grid_resol)
         self.grid_k = np.roll(self.grid_k, int((self.grid_resol)/2))
         self.grid_kin =  np.square(self.h)/ (2*self.m) * np.square(self.grid_k)
-        self.grid_kin_action = np.exp(- 1.0j * dt * self.grid_kin) 
-    
+        
     def get_potential(self,t):
         """ Potential (gravity + mirror) evaluated at each point of grid_x """
         grid_V = self.grid_x * (1 + self.Lambda*np.cos(self.omega*t)) * (self.grid_x >= 0)
@@ -90,7 +88,8 @@ class model:
         """ Evolve a state |psi(t)> to |psi(t+ dt)> using the split Fourier 
         method """
         V_action = np.exp(- 1.0j * dt * self.get_potential(t))
-        return V_action*self.k_to_x(self.grid_kin_action * self.x_to_k(psi))
+        kin_action = np.exp(- 1.0j * dt * self.grid_kin) 
+        return V_action*self.k_to_x(kin_action * self.x_to_k(psi))
 
     def evol_to_t(self, t, dt, psi_0, save_freq = 0):
         """ evolve an initial state to a final time by discrete time steps. 
@@ -133,6 +132,7 @@ class model:
             
         return psi_tmp
     
+    
     #deals with fourrier transfo
     def x_to_k(self, psi_x):
         """ Psi(x) -> Psi(k)"""
@@ -141,6 +141,7 @@ class model:
     def k_to_x(self, psi_k):
         """ Psi(k) -> Psi(x)"""
         return ifft(psi_k, norm='ortho')
+    
     
     #Extras functions to help computing some figures of merit
     def ip(self, psi_1, psi_2):
@@ -162,6 +163,3 @@ class model:
     def norm(self, psi):
         """ Compute the norm of a state (in position basis)"""
         return np.sqrt(np.abs(self.ip(psi)))
-
-
-if __name__ == '__main__':
